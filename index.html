@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>RoazBling Scanner</title>
+<meta name="description" content="RoazBling product scanner — scan a barcode or QR code to look up 925 silver jewellery pricing.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#171614">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+
+<!-- DIAGNOSTIC: catches any JS error anywhere on the page and shows it on-screen,
+     since a phone has no visible console. If you ever see a red banner at the
+     top of the page, that text is the real bug — screenshot it. -->
+<script>
+  window.addEventListener("error", function (e) {
+    showBootError((e && e.message) ? e.message : "Unknown script error");
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    showBootError((e && e.reason && e.reason.message) ? e.reason.message : String(e.reason));
+  });
+  function showBootError(msg) {
+    try {
+      var el = document.getElementById("bootError");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "bootError";
+        el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999;background:#7a1f1f;color:#fff;padding:10px 14px;font:12px/1.4 monospace;white-space:pre-wrap;";
+        document.body.appendChild(el);
+      }
+      el.textContent += (el.textContent ? "\n" : "") + "Error: " + msg;
+    } catch (ignored) {}
+  }
+</script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">RoazBling</span>
+    <span class="brand-sub">925 Silver Jewellery</span>
+  </div>
+  <div id="dataStatus" class="data-status">Loading product data…</div>
+</header>
+
+<main id="app">
+
+  <!-- HOME SCREEN -->
+  <section id="screen-home" class="screen">
+    <button id="btnScan" class="scan-button" type="button">
+      <span class="scan-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="30" height="30"><path d="M8 4h6v3H11v3H8V4zm26 0h6v6h-3V7h-3V4zM8 41v-6h3v3h3v3H8zm34-6v6h-6v-3h3v-3h3zM4 20h40v2H4v-2z" fill="currentColor"/></svg>
+      </span>
+      Scan Product
+    </button>
+
+    <div class="divider"><span>or enter code manually</span></div>
+
+    <form id="manualForm" class="manual-form" autocomplete="off">
+      <input id="manualInput" class="manual-input" type="text" placeholder="e.g. ACC03-01" inputmode="text" autocapitalize="characters">
+      <button id="btnSearch" type="submit" class="search-button">Search</button>
+    </form>
+
+    <button id="btnRefresh" class="refresh-link" type="button">↻ Refresh Data</button>
+  </section>
+
+  <!-- SCANNER SCREEN -->
+  <section id="screen-scanner" class="screen hidden">
+    <div class="scanner-wrap">
+      <div id="qr-reader"></div>
+      <p class="scanner-hint">Point your camera at the product barcode or QR code</p>
+    </div>
+    <button id="btnCancelScan" class="text-button" type="button">Cancel</button>
+  </section>
+
+  <!-- RESULT SCREEN -->
+  <section id="screen-result" class="screen hidden">
+    <div id="resultCard" class="result-card"></div>
+    <div class="result-actions">
+      <button id="btnScanAgain" class="scan-button" type="button">📷 Scan Again</button>
+      <button id="btnSearchAgain" class="text-button" type="button">Search again</button>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
