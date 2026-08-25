@@ -1,94 +1,259 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>RoazBling Scanner</title>
-<meta name="description" content="RoazBling product scanner — scan a barcode or QR code to look up 925 silver jewellery pricing.">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#171614">
-<link rel="apple-touch-icon" href="icon.png">
-<link rel="stylesheet" href="style.css">
-
-<!-- DIAGNOSTIC: catches any JS error anywhere on the page and shows it on-screen,
-     since a phone has no visible console. If you ever see a red banner at the
-     top of the page, that text is the real bug — screenshot it. -->
-<script>
-  window.addEventListener("error", function (e) {
-    showBootError((e && e.message) ? e.message : "Unknown script error");
-  });
-  window.addEventListener("unhandledrejection", function (e) {
-    showBootError((e && e.reason && e.reason.message) ? e.reason.message : String(e.reason));
-  });
-  function showBootError(msg) {
-    try {
-      var el = document.getElementById("bootError");
-      if (!el) {
-        el = document.createElement("div");
-        el.id = "bootError";
-        el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999;background:#7a1f1f;color:#fff;padding:10px 14px;font:12px/1.4 monospace;white-space:pre-wrap;";
-        document.body.appendChild(el);
-      }
-      el.textContent += (el.textContent ? "\n" : "") + "Error: " + msg;
-    } catch (ignored) {}
-  }
-</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>ROAZBLING Price Scanner</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f3f3;color:#151515;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#111;color:#fff;text-align:center;padding:17px 14px}
+h1{font-size:21px;margin:0 0 3px}.sub{font-size:12px;opacity:.72}
+main{max-width:540px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:18px;padding:15px;margin:12px 0;box-shadow:0 4px 18px #0001}
+.scan{position:relative;border-radius:15px;overflow:hidden;background:#000}
+video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.guide{position:absolute;left:8%;right:8%;top:25%;height:50%;border:2px solid #fff;border-radius:12px;pointer-events:none}
+.guide:before{content:"PLACE LACC / NRC / OBWC HERE";position:absolute;left:8px;top:-27px;color:#fff;background:#000b;padding:4px 7px;border-radius:5px;font-size:10px;font-weight:700}
+.guide .line{position:absolute;left:0;right:0;border-top:1px dashed #fff8}
+.guide .l1{top:33.33%}.guide .l2{top:66.66%}
+button{width:100%;border:0;border-radius:13px;padding:14px;margin-top:9px;font-size:16px;font-weight:700;background:#111;color:#fff}
+button.secondary{background:#e8e8e8;color:#111}
+.hidden{display:none!important}
+.status{font-size:13px;color:#666;margin:10px 0;line-height:1.4}
+.rows{display:grid;gap:9px;margin-top:12px}
+.row{display:flex;justify-content:space-between;align-items:center;border:1px solid #eee;border-radius:13px;padding:13px}
+.label{font-weight:700}.value{font-size:25px;font-weight:800}
+.detected{font:16px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+.ok{font-size:13px;font-weight:700;margin-top:10px}
+.small{font-size:12px;color:#777;line-height:1.5}
+</style>
 </head>
 <body>
-
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-mark">RoazBling</span>
-    <span class="brand-sub">925 Silver Jewellery</span>
-  </div>
-  <div id="dataStatus" class="data-status">Loading product data…</div>
+<header>
+<h1>ROAZBLING Price Scanner</h1>
+<div class="sub">QR ignored • smart multi-pass code reading</div>
 </header>
 
-<main id="app">
-
-  <!-- HOME SCREEN -->
-  <section id="screen-home" class="screen">
-    <button id="btnScan" class="scan-button" type="button">
-      <span class="scan-icon" aria-hidden="true">
-        <svg viewBox="0 0 48 48" width="30" height="30"><path d="M8 4h6v3H11v3H8V4zm26 0h6v6h-3V7h-3V4zM8 41v-6h3v3h3v3H8zm34-6v6h-6v-3h3v-3h3zM4 20h40v2H4v-2z" fill="currentColor"/></svg>
-      </span>
-      Scan Product
-    </button>
-
-    <div class="divider"><span>or enter code manually</span></div>
-
-    <form id="manualForm" class="manual-form" autocomplete="off">
-      <input id="manualInput" class="manual-input" type="text" placeholder="e.g. ACC03-01" inputmode="text" autocapitalize="characters">
-      <button id="btnSearch" type="submit" class="search-button">Search</button>
-    </form>
-
-    <button id="btnRefresh" class="refresh-link" type="button">↻ Refresh Data</button>
-  </section>
-
-  <!-- SCANNER SCREEN -->
-  <section id="screen-scanner" class="screen hidden">
-    <div class="scanner-wrap">
-      <div id="qr-reader"></div>
-      <p class="scanner-hint">Point your camera at the product barcode or QR code</p>
+<main>
+<div class="card">
+  <div class="scan">
+    <video id="video" autoplay muted playsinline></video>
+    <div class="guide">
+      <div class="line l1"></div><div class="line l2"></div>
     </div>
-    <button id="btnCancelScan" class="text-button" type="button">Cancel</button>
-  </section>
+  </div>
+  <div id="status" class="status">Camera start karo. Sirf LACC / NRC / OBWC wali 3 lines ko box mein rakho.</div>
+  <button id="start">Start Camera</button>
+  <button id="scan" class="hidden">Scan Prices</button>
+  <button id="stop" class="secondary hidden">Stop Camera</button>
+</div>
 
-  <!-- RESULT SCREEN -->
-  <section id="screen-result" class="screen hidden">
-    <div id="resultCard" class="result-card"></div>
-    <div class="result-actions">
-      <button id="btnScanAgain" class="scan-button" type="button">📷 Scan Again</button>
-      <button id="btnSearchAgain" class="text-button" type="button">Search again</button>
-    </div>
-  </section>
+<div id="result" class="card hidden">
+  <div class="small">Decoded codes</div>
+  <div id="detected" class="detected">—</div>
+  <div class="rows">
+    <div class="row"><span class="label">Customer Cost (CC)</span><span class="value" id="cc">—</span></div>
+    <div class="row"><span class="label">Reseller Cost (RC)</span><span class="value" id="rc">—</span></div>
+    <div class="row"><span class="label">Wholesale Cost (WC)</span><span class="value" id="wc">—</span></div>
+  </div>
+  <div id="quality" class="ok"></div>
+  <button id="again">Scan Again</button>
+</div>
 
+<div class="card small">
+<b>Best scanning tips</b><br>
+• Tag ko seedha rakho • bright light use karo • camera ko bahut paas mat lao • 3 price lines poore box mein lao.<br><br>
+<b>Mapping:</b> R=1 O=2 A=3 Z=4 B=5 L=6 I=7 N=8 G=9 X=0<br>
+No digit addition. CC / RC / WC sirf category suffix hain.
+</div>
+<canvas id="canvas" class="hidden"></canvas>
 </main>
 
-<div id="toast" class="toast hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const video=document.getElementById("video");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const statusEl=document.getElementById("status");
+let stream=null,busy=false,worker=null;
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="app.js"></script>
+const map={R:"1",O:"2",A:"3",Z:"4",B:"5",L:"6",I:"7",N:"8",G:"9",X:"0"};
+const allowed=/^[ROAZBLINGX]+(?:CC|RC|WC)$/;
+
+function clean(s){
+  return s.toUpperCase()
+    .replace(/[—–−]/g,"-")
+    .replace(/[^A-Z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    // OCR often sees zero as O in this alphabet.
+    .replace(/0/g,"O");
+}
+function decodeToken(token){
+  let s=clean(token).replace(/\s/g,"");
+  // Remove a leading stray dash/number if OCR attached one.
+  s=s.replace(/^[^A-Z]+/,"");
+  if(!allowed.test(s)) return null;
+  const type=s.slice(-2), body=s.slice(0,-2);
+  const digits=[...body].map(c=>map[c]).join("");
+  if(!digits) return null;
+  return {type,raw:s,price:digits};
+}
+function candidates(text){
+  const c=[];
+  const t=clean(text);
+  for(const x of t.split(/\s+/)) { const d=decodeToken(x); if(d)c.push(d); }
+  const re=/[ROAZBLINGX]{1,10}(?:CC|RC|WC)/g;
+  for(const m of t.match(re)||[]) { const d=decodeToken(m); if(d)c.push(d); }
+  return c;
+}
+
+function normalizePriceCode(c){
+  // Keep only valid ROAZBLING letters and the category suffix.
+  // If OCR doubled a character, consensus from other passes decides.
+  return c;
+}
+
+function chooseBest(list){
+  // Consensus voting by exact decoded price for each suffix.
+  const groups={CC:[],RC:[],WC:[]};
+  list.forEach(x=>{if(groups[x.type])groups[x.type].push(x)});
+  const out={};
+  for(const type of Object.keys(groups)){
+    const arr=groups[type];
+    if(!arr.length)continue;
+    const counts={};
+    arr.forEach(x=>{
+      const k=x.price+"|"+x.raw;
+      counts[k]=(counts[k]||0)+1;
+    });
+    arr.sort((a,b)=>{
+      const ca=counts[a.price+"|"+a.raw]||0;
+      const cb=counts[b.price+"|"+b.raw]||0;
+      return cb-ca;
+    });
+    // Prefer the most repeated exact code.
+    out[type]=arr[0];
+  }
+  return out;
+}
+
+async function initWorker(){
+  if(worker)return;
+  worker=await Tesseract.createWorker("eng",1,{
+    logger:m=>{
+      if(m.status==="recognizing text")
+        statusEl.textContent="Reading… "+Math.round((m.progress||0)*100)+"%";
+    }
+  });
+  await worker.setParameters({
+    tessedit_char_whitelist:"ROAZBLINGXCRW0123456789",
+    preserve_interword_spaces:"0"
+  });
+}
+
+function makeVariants(){
+  const w=video.videoWidth,h=video.videoHeight;
+  // Guide corresponds roughly to this area. Crop only the price-code side,
+  // excluding most of the QR and product/weight text.
+  const sx=Math.round(w*.43), sy=Math.round(h*.20);
+  const sw=Math.round(w*.52), sh=Math.round(h*.60);
+  const temp=document.createElement("canvas");
+  temp.width=sw*2; temp.height=sh*2;
+  const tc=temp.getContext("2d");
+
+  const variants=[];
+  const filters=[
+    {gray:true,contrast:1.0,threshold:false},
+    {gray:true,contrast:1.7,threshold:false},
+    {gray:true,contrast:2.3,threshold:true}
+  ];
+  for(const f of filters){
+    tc.filter=`grayscale(1) contrast(${f.contrast})`;
+    tc.drawImage(video,sx,sy,sw,sh,0,0,temp.width,temp.height);
+    if(f.threshold){
+      const im=tc.getImageData(0,0,temp.width,temp.height), d=im.data;
+      for(let i=0;i<d.length;i+=4){
+        const v=d[i];
+        const q=v<175?0:255;
+        d[i]=d[i+1]=d[i+2]=q;
+      }
+      tc.putImageData(im,0,0);
+    }
+    variants.push(temp.toDataURL("image/png"));
+  }
+  return variants;
+}
+
+async function scan(){
+  if(busy||!stream)return;
+  busy=true;
+  try{
+    await initWorker();
+    const variants=makeVariants();
+    let all=[],raws=[];
+    // Multiple segmentation modes increase resistance to missing/doubled letters.
+    const modes=["6","11","12"];
+    for(const v of variants){
+      for(const psm of modes){
+        await worker.setParameters({tessedit_pageseg_mode:psm});
+        const r=await worker.recognize(v);
+        raws.push(r.data.text);
+        all.push(...candidates(r.data.text));
+      }
+    }
+
+    const found=chooseBest(all);
+    const count=Object.keys(found).length;
+    if(count){
+      document.getElementById("detected").textContent=
+        Object.values(found).map(x=>x.raw).join("  |  ");
+      document.getElementById("cc").textContent=found.CC?"₹"+found.CC.price:"—";
+      document.getElementById("rc").textContent=found.RC?"₹"+found.RC.price:"—";
+      document.getElementById("wc").textContent=found.WC?"₹"+found.WC.price:"—";
+      document.getElementById("quality").textContent=
+        count===3 ? "✓ 3/3 price codes decoded" : "✓ Partial read — missing code(s) shown as —";
+      document.getElementById("result").classList.remove("hidden");
+      statusEl.textContent="Scan complete.";
+      if(navigator.vibrate)navigator.vibrate(80);
+    }else{
+      statusEl.textContent="Code read nahi hua. Tag ko box mein seedha rakho aur Scan Prices dobara dabao.";
+    }
+  }catch(e){
+    console.error(e);
+    statusEl.textContent="Scan error. Please try again.";
+  }finally{busy=false;}
+}
+
+async function start(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440}},
+      audio:false
+    });
+    video.srcObject=stream;
+    document.getElementById("start").classList.add("hidden");
+    document.getElementById("scan").classList.remove("hidden");
+    document.getElementById("stop").classList.remove("hidden");
+    statusEl.textContent="Ready. 3 price lines box ke andar lao.";
+  }catch(e){
+    statusEl.textContent="Camera permission allow karo. HTTPS website par camera chalega.";
+  }
+}
+function stop(){
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  document.getElementById("start").classList.remove("hidden");
+  document.getElementById("scan").classList.add("hidden");
+  document.getElementById("stop").classList.add("hidden");
+}
+document.getElementById("start").onclick=start;
+document.getElementById("scan").onclick=scan;
+document.getElementById("stop").onclick=stop;
+document.getElementById("again").onclick=()=>{
+  document.getElementById("result").classList.add("hidden");
+  statusEl.textContent="Ready. 3 price lines box ke andar lao.";
+};
+</script>
 </body>
 </html>
